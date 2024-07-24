@@ -5,6 +5,7 @@ from edbo.plus.optimizer_botorch import EDBOplus
 class EDBOGenerator:
     def __init__(self,run_dir:str):
         self.run_dir = run_dir
+        self.run_name = f'{os.path.split(run_dir)[-1]}'
         os.chdir(self.run_dir)
         """
         1.initialize a run directory if not found, and also initialize components file if not found. 
@@ -40,15 +41,15 @@ class EDBOGenerator:
         self.obj_modes = [mode for mode in obj_list.keys() for obj in obj_list[mode]]
         EDBOplus().generate_reaction_scope(components=self.components,
                                          directory=self.run_dir,
-                                         filename=f'{os.path.split(self.run_dir)[-1]}_scope.csv',
+                                         filename=f'{self.run_name}_scope.csv',
                                          check_overwrite = False
                                          )
         print('scope successfully initialized')
-        pd.read_csv(f'{os.path.split(self.run_dir)[-1]}_scope.csv').to_csv(f'{os.path.split(self.run_dir)[-1]}_round_0.csv',index = False)
+        pd.read_csv(f'{self.run_name}_scope.csv').to_csv(f'{self.run_name}_round_0.csv',index = False)
         EDBOplus().run(objectives = self.run_objs,
                      objective_mode = self.obj_modes,
                      directory = self.run_dir,
-                     filename = f'{os.path.split(self.run_dir)[-1]}_round_0.csv',
+                     filename = f'{self.run_name}_round_0.csv',
                      batch = batch_size
                      )
         print('round_0 file successfully generated, ready for data input!')
@@ -66,22 +67,40 @@ class EDBOGenerator:
         EDBOplus().run(objectives = self.run_objs,
                      objective_mode = self.obj_modes,
                      directory = self.run_dir,
-                     filename = f'{os.path.split(self.run_dir)[-1]}_round_{round_num}.csv',
+                     filename = f'{self.run_name}_round_{round_num}.csv',
                      batch = batch_size
                      )
-        round_result = pd.read_csv(f'pred_{os.path.split(self.run_dir)[-1]}_round_{round_num}.csv')
+        round_result = pd.read_csv(f'pred_{self.run_name}_round_{round_num}.csv')
         next_round = round_result.filter(axis = 'columns', regex='^(?!.*(predicted_mean|predicted_variance|expected_improvement)).*')
-        next_round.to_csv(f'{os.path.split(self.run_dir)[-1]}_round_{round_num+1}.csv',index = False)
-        print('optimization successful! next round is ready for data input')
+        next_round.to_csv(f'{self.run_name}_round_{round_num+1}.csv',index = False)
+        print(f'optimization successful! next round (round_{round_num+1}) is ready for data input')
 
-    def bulk_training(self,training_df):
+    def bulk_training(self,training_df:pd.DataFrame,round_num:int = 0,batch_size:int = 5) -> dict:
         """
-        perform bulk data input from a dataframe containing columns for each component, 
-        and columns for each run objective with filled results
+        1. take a dataframe with columns for each component, and columns for each objective with filled results
+        2. search round file for each component combination using query strings
+        3. input results from training df into objective columns in round file, set priority to -1
+        4. sort final df by priority
         """
-        pass
+        if not os.path.exists(os.path.join(self.run_dir,'backup')):
+            os.mkdir(os.path.join(self.run_dir,'backup'))
+        round_input = pd.read_csv(f'{self.run_name}_round_{round_num}.csv')
+        round_input.to_csv(os.path.join('backup',f'{self.run_name}_round_{round_num}_bulk_training_backup.csv'),index = False)
+        for index,row in training_df.iterrows():
+            results_list = [row[objective] for objective in self.run_objs]
+            query_list = []
+            for component in self.components.keys():
+                query_list.append(f'{component} == "{row[component]}"')
+            query = ' & '.join(query_list)
+            round_input.loc[round_input.query(query).index[0],self.run_objs] = results_list
+            round_input.loc[round_input.query(query).index[0],'priority'] = -1
+            output = round_input.sort_values(by = 'priority', ascending = False)
+            output.loc[0:batch_size-1,'priority'] = 1
+        output.to_csv(f'{self.run_name}_round_{round_num}.csv',index = False)
+        print(f'bulk data input successful! {self.run_name}_round_{round_num}.csv was overwritten and a backup was stored in {os.path.join(self.run_dir,"backup")}')
 
-    def simulate_run(self,batch_size,round_num,max_rounds):
+
+    def simulate_run(self,training_df,batch_size,round_num,max_rounds):
         """
         perform a simulated optimization run using bulk input data
         """
