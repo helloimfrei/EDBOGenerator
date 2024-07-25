@@ -3,10 +3,17 @@ import os
 import plotly.graph_objects as go
 from edbo.plus.optimizer_botorch import EDBOplus
 import EDBOGenerator.ebdo_vis as vis
+import datetime
 
+""" 
+TO DO
+work on logging feature, and transform log dictionary into useful format in summary method
+"""
 class EDBOGenerator:
     def __init__(self,run_dir:str):
         self.run_dir = run_dir
+        self.summary = {}
+        self.counter = 0
         if not os.path.exists(run_dir):
             os.makedirs(run_dir)
             print('run directory did not exist, created one')
@@ -31,7 +38,17 @@ class EDBOGenerator:
             print('components.csv file did not exist, created a template. run successfully initialized')
         else:
             print('components.csv file already exists, run successfully initialized')
-    
+
+    def _log_stuff(self,method:str,params:dict,result = None):
+        self.history[self.counter] = {
+            'timestamp':datetime.datetime.now(),
+            'method':method,
+            'params':params,
+            'result':result
+        }
+        self.counter+=1
+
+
     def initialize_scope(self,batch_size:int = 5, **kwargs):
         """
         initialize the scope of the optimization run, generate a round_0 file
@@ -56,6 +73,7 @@ class EDBOGenerator:
                      **kwargs
                      )
         print('round_0 file successfully generated, ready for data input!')
+        self._log_stuff('initialize_scope',params = {'batch_size':batch_size,'kwargs':kwargs})
     
     def input_data(self):
         """
@@ -78,6 +96,7 @@ class EDBOGenerator:
         next_round = round_result.filter(axis = 'columns', regex='^(?!.*(predicted_mean|predicted_variance|expected_improvement)).*')
         next_round.to_csv(f'{self.run_name}_round_{round_num+1}.csv',index = False)
         print(f'optimization successful! next round (round_{round_num+1}) is ready for data input')
+        self._log_stuff('single_round_predict',params = {'round_num':round_num,'batch_size':batch_size,'kwargs':kwargs})
 
     def bulk_training(self,training_df:pd.DataFrame,round_num:int = 0,batch_size:int = 5,priority_limiting = False,priority_setting = False):
         """
@@ -126,6 +145,7 @@ class EDBOGenerator:
             output.loc[0:batch_size-1,'priority'] = 1
         output.to_csv(f'{self.run_name}_round_{round_num}.csv',index = False)
         print(f'bulk data input successful! {self.run_name}_round_{round_num}.csv was overwritten and a backup was stored in {os.path.join(self.run_dir,"backup")}')
+        self._log_stuff('bulk_training',params = {'training_df':training_df,'round_num':round_num,'batch_size':batch_size,'priority_limiting':priority_limiting,'priority_setting':priority_setting})
 
 
     def simulate_run(self,training_df,batch_size,max_rounds):
@@ -135,6 +155,7 @@ class EDBOGenerator:
         for round_num in range(max_rounds):
             self.bulk_training(training_df = training_df, batch_size = batch_size,round_num=round_num,priority_limiting = True, priority_setting=True)
             self.single_round_predict(round_num = round_num,batch_size = batch_size)
+        self._log_stuff('simulate_run',params = {'training_df':training_df,'batch_size':batch_size,'max_rounds':max_rounds})
 
     def summary(self):
         """"
