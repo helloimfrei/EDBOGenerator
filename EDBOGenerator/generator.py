@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import plotly.graph_objects as go
 from edbo.plus.optimizer_botorch import EDBOplus
+import EDBOGenerator.ebdo_vis as vis
 
 class EDBOGenerator:
     def __init__(self,run_dir:str):
