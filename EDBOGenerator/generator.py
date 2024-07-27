@@ -2,18 +2,18 @@ import pandas as pd
 import os
 import plotly.graph_objects as go
 from edbo.plus.optimizer_botorch import EDBOplus
-import EDBOGenerator.ebdo_vis as vis
+#import EDBOGenerator.ebdo_vis as vis
 import datetime
+import json
 
 """ 
 TO DO
-work on logging feature, and transform log dictionary into useful format in summary method
+work on logging feature, and transform log dictionary into useful format for summary method
 """
 class EDBOGenerator:
     def __init__(self,run_dir:str):
         self.run_dir = run_dir
-        self.summary = {}
-        self.counter = 0
+        self._counter = 0
         if not os.path.exists(run_dir):
             os.makedirs(run_dir)
             print('run directory did not exist, created one')
@@ -21,6 +21,10 @@ class EDBOGenerator:
             print('run directory already exists')    
         os.chdir(self.run_dir)   
         self.run_name = f'{os.path.split(run_dir)[-1]}'
+        if not os.path.exists(f'{self.run_name}_summary.csv'):
+            self.summary = {}
+        else:
+            self.summary = json.load(open(f'{self.run_name}_summary.json'))    
         """
         1.initialize a run directory if not found, and also initialize components file if not found. 
         components file should have columns for each component, and columns named min and max with a list of objective to min max in the optimizer
@@ -39,19 +43,20 @@ class EDBOGenerator:
         else:
             print('components.csv file already exists, run successfully initialized')
 
-    def _log_stuff(self,method:str,params:dict,result = None):
-        self.history[self.counter] = {
+    def _save_session(self,method:str,params:dict,result = None):
+        self.summary[self._counter] = {
             'timestamp':datetime.datetime.now(),
             'method':method,
             'params':params,
             'result':result
         }
-        self.counter+=1
+        self._counter+=1
 
 
     def initialize_scope(self,batch_size:int = 5, **kwargs):
         """
-        initialize the scope of the optimization run, generate a round_0 file
+        initialize the scope of the optimization run, generate a round_0 file if needed. run this everytime you start an analysis,
+        even if you already have some rounds.
         """
         component_frame = pd.read_csv(self.run_dir + '/components.csv')
         self.components = {k:component_frame[k].dropna().tolist() for k in component_frame.drop(columns = ['min','max']).columns}
@@ -64,15 +69,17 @@ class EDBOGenerator:
                                          check_overwrite = False
                                          )
         print('scope successfully initialized')
-        pd.read_csv(f'{self.run_name}_scope.csv').to_csv(f'{self.run_name}_round_0.csv',index = False)
-        EDBOplus().run(objectives = self.run_objs,
-                     objective_mode = self.obj_modes,
-                     directory = self.run_dir,
-                     filename = f'{self.run_name}_round_0.csv',
-                     batch = batch_size,
-                     **kwargs
-                     )
-        print('round_0 file successfully generated, ready for data input!')
+        if not os.path.exists(f'{self.run_name}_round_0.csv'):
+            pd.read_csv(f'{self.run_name}_scope.csv').to_csv(f'{self.run_name}_round_0.csv',index = False)
+            EDBOplus().run(objectives = self.run_objs,
+                        objective_mode = self.obj_modes,
+                        directory = self.run_dir,
+                        filename = f'{self.run_name}_round_0.csv',
+                        batch = batch_size,
+                        **kwargs
+                        )
+            print('no round_0 file found,a new one was successfully generated. ready for data input!')
+        print('round_0 file located, ready to continue optimization!')
         self._log_stuff('initialize_scope',params = {'batch_size':batch_size,'kwargs':kwargs})
     
     def input_data(self):
