@@ -2,18 +2,22 @@ import pandas as pd
 import os
 import plotly.graph_objects as go
 from edbo.plus.optimizer_botorch import EDBOplus
-#import EDBOGenerator.ebdo_vis as vis
+import EDBOGenerator.vis as vis
 import datetime
 import json
 
 """ 
 TO DO
-work on logging feature, and transform log dictionary into useful format for summary method
+work on logging feature, make it more readable and intuitive.
+add programmatic result filling, don't want any interaction with csvs in run folder ideally
 """
 class EDBOGenerator:
     def __init__(self,run_dir:str):
+        """
+        Initialize a run directory, components file, and logging file (summary.json) if not found. 
+        Components file should have columns for each component, and columns named min and max with a list of objective to min max in the optimizer.
+        """
         self.run_dir = run_dir
-        self._counter = 0
         if not os.path.exists(run_dir):
             os.makedirs(run_dir)
             print('run directory did not exist, created one')
@@ -21,14 +25,18 @@ class EDBOGenerator:
             print('run directory already exists')    
         os.chdir(self.run_dir)   
         self.run_name = f'{os.path.split(run_dir)[-1]}'
-        if not os.path.exists(f'{self.run_name}_summary.csv'):
+
+        #initialize logging file and counter for persistent logging between sessions
+        if not os.path.exists(f'{self.run_name}_summary.json'):
             self.summary = {}
+            with open(f'{self.run_name}_summary.json','x') as f:
+                json.dump(self.summary,f)
+            print('logging file (summary.json) generated in run directory')
+            self._counter = 0
         else:
-            self.summary = json.load(open(f'{self.run_name}_summary.json'))    
-        """
-        1.initialize a run directory if not found, and also initialize components file if not found. 
-        components file should have columns for each component, and columns named min and max with a list of objective to min max in the optimizer
-        """
+            with open(f'{self.run_name}_summary.json', 'r') as f:
+                self.summary = json.load(f)
+            self._counter = len(self.summary)    
         component_template = pd.DataFrame({
             'component_1':['a','b','',''],
             'component_2':['e','f','g','h'],
@@ -43,20 +51,31 @@ class EDBOGenerator:
         else:
             print('components.csv file already exists, run successfully initialized')
 
-    def _save_session(self,method:str,params:dict,result = None):
+    def _log_stuff(self,method:str,params:dict,result = None):
         self.summary[self._counter] = {
-            'timestamp':datetime.datetime.now(),
+            'timestamp':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'method':method,
             'params':params,
             'result':result
         }
+        with open(f'{self.run_name}_summary.json','w') as f:
+                json.dump(self.summary,f)
         self._counter+=1
 
 
     def initialize_scope(self,batch_size:int = 5, **kwargs):
         """
-        initialize the scope of the optimization run, generate a round_0 file if needed. run this everytime you start an analysis,
-        even if you already have some rounds.
+        Initialize the reaction scope of the optimization run, and generate a round_0 file if needed. Run this everytime you start a new session,
+        even if you already have some optimization data.
+        
+        Parameters
+        ----------
+        batch_size : int
+            Number of reactions EDBO will suggest each round (can alter later on, >10 may liquify your machine)
+        
+        Returns
+        -------
+        None
         """
         component_frame = pd.read_csv(self.run_dir + '/components.csv')
         self.components = {k:component_frame[k].dropna().tolist() for k in component_frame.drop(columns = ['min','max']).columns}
@@ -79,7 +98,8 @@ class EDBOGenerator:
                         **kwargs
                         )
             print('no round_0 file found,a new one was successfully generated. ready for data input!')
-        print('round_0 file located, ready to continue optimization!')
+        else:
+            print('round_0 file located, ready to continue optimization!')
         self._log_stuff('initialize_scope',params = {'batch_size':batch_size,'kwargs':kwargs})
     
     def input_data(self):
@@ -90,7 +110,18 @@ class EDBOGenerator:
 
     def single_round_predict(self,round_num:int = 0,batch_size:int = 5, **kwargs):
         """
-        perform one round of selection and generate required file for subsequent round
+        Perform one round of selection and generate required file for subsequent round.
+
+        Parameters
+        ----------
+        round_num : int
+            Optimization round to continue from.
+        batch_size : int
+            Number of reactions EDBO will suggest each round (can alter later on, >10 may liquify your machine)
+
+        Returns
+        -------
+        None
         """
         EDBOplus().run(objectives = self.run_objs,
                      objective_mode = self.obj_modes,
@@ -114,7 +145,7 @@ class EDBOGenerator:
         training_df : pd.DataFrame
             A dataframe containing columns for each component and columns for each objective with filled results.
         round_num : int, optional
-            The round number at which you want to insert bulk training data (you can do this at any point during your optimization run).
+            The round number at which you want to insert bulk training data (you can run this function at any point during your optimization).
         batch_size : int, optional
             The experimental batch size for next prediction using the functions single_round_predict or simulate_run (default is 5, beware anything higher than 10 may liquify your machine).
         priority_limiting : bool, optional
@@ -152,24 +183,38 @@ class EDBOGenerator:
             output.loc[0:batch_size-1,'priority'] = 1
         output.to_csv(f'{self.run_name}_round_{round_num}.csv',index = False)
         print(f'bulk data input successful! {self.run_name}_round_{round_num}.csv was overwritten and a backup was stored in {os.path.join(self.run_dir,"backup")}')
-        self._log_stuff('bulk_training',params = {'training_df':training_df,'round_num':round_num,'batch_size':batch_size,'priority_limiting':priority_limiting,'priority_setting':priority_setting})
+        self._log_stuff('bulk_training',params = {'training_df':training_df.to_dict(),'round_num':round_num,'batch_size':batch_size,'priority_limiting':priority_limiting,'priority_setting':priority_setting})
 
 
-    def simulate_run(self,training_df,batch_size,max_rounds):
+    def simulate_run(self,training_df:pd.DataFrame,max_rounds:int,batch_size:int=5):
         """
-        perform a simulated optimization run using bulk input data
+        Perform a simulated optimization run using bulk input data.
+
+        Parameters
+        ----------
+        training_df : pd.DataFrame
+            A dataframe containing columns for each component and columns for each objective with filled results.
+        batch_size : int
+            The number of reactions suggested by EDBO each round (beware anything higher than 10 may liquify your machine).
+        max_rounds : int
+            The number of rounds to simulate.
+
+        Returns
+        -------
+        None
         """
+        self._log_stuff('simulate_run',params = {'training_df':training_df.to_dict(),'batch_size':batch_size,'max_rounds':max_rounds})
         for round_num in range(max_rounds):
             self.bulk_training(training_df = training_df, batch_size = batch_size,round_num=round_num,priority_limiting = True, priority_setting=True)
             self.single_round_predict(round_num = round_num,batch_size = batch_size)
-        self._log_stuff('simulate_run',params = {'training_df':training_df,'batch_size':batch_size,'max_rounds':max_rounds})
 
     def summary(self):
-        """"
+        """
         summarize the current state of the run as a dataframe
         """
+
     def visualize(self,plot_type):
-        """"
+        """
         visualize the prediction results of the run 
         """
         pass
