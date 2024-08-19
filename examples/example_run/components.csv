@@ -1,0 +1,5 @@
+base,catalyst,temperature,solvent,min,max
+K3PO4,RuPhos Pd G4,80,THF,dehalogenation_pdt,desired_pdt
+Cs2CO3,XPhos Pd G3,100,NMP,hydrolyis_pdt,
+,XantPhos Pd G4,120,dioxane,,
+,JackiePhos Pd G3,,toluene,,

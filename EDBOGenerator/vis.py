@@ -1,7 +1,10 @@
 import plotly.graph_objects as go
 import os
 import pandas as pd
-from generator import EDBOGenerator
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from generator import EDBOGenerator
 
 def test_vis():
     fig = go.Figure()
@@ -9,7 +12,7 @@ def test_vis():
     fig.add_trace(go.Scatter(x=[20, 30, 40], y=[50, 60, 70]))
     fig.show()
 
-def collect_preds(generator:EDBOGenerator):
+def collect_preds(generator:'EDBOGenerator'):
     """
     Collect prediction data from run dir, store in dict as df
     """
@@ -20,7 +23,7 @@ def collect_preds(generator:EDBOGenerator):
     return {k.replace(f'pred_{generator.run_name}_',''):v for k,v in preds.items()}
 
 
-def scatter(generator:EDBOGenerator,exclude_rounds:list = None):
+def scatter(generator:'EDBOGenerator',exclude_rounds:list = None):
 
     pass
 

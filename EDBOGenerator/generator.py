@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import plotly.graph_objects as go
 from edbo.plus.optimizer_botorch import EDBOplus
-import EDBOGenerator.vis as vis
+import vis 
 import datetime
 import json
 
