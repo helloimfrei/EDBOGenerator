@@ -11,4 +11,4 @@ Planned features include a Shiny-based UI to enable user-friendly data input (my
 
 ## Installation:
 1. Get EDBO running locally using the instructions highlighted in the EDBOPlus repo.
-2.  Coming soon! 
+2.  Package coming soon!
