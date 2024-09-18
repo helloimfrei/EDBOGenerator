@@ -19,7 +19,7 @@ Planned features include a Shiny-based UI to enable user-friendly data input (my
 
     ```bash
     git clone https://github.com/helloimfrei/EDBOGenerator.git
-    cd EDBOGenerator
+    cd EDBOGenerator/edbogenerator/
     pip install .
     ```
 4. Check out the examples folder for a demo workflow!
