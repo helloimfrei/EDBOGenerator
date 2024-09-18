@@ -23,7 +23,7 @@ def collect_preds(generator:'EDBOGenerator'):
     return {k.replace(f'pred_{generator.run_name}_',''):v for k,v in preds.items()}
 
 
-def scatter(generator:'EDBOGenerator',exclude_rounds:list = None):
+def scatter(generator:'EDBOGenerator'):
 
     pass
 

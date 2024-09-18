@@ -2,6 +2,7 @@ import os
 import json
 import datetime
 import pandas as pd
+from .vis import scatter
 from edbo.plus.optimizer_botorch import EDBOplus
 
 class EDBOGenerator:
@@ -10,12 +11,14 @@ class EDBOGenerator:
         Initialize a run directory, components file, and logging file (summary.json) if not found.
         Components file should have columns for each component, and columns named min and max with a list of objective to min max in the optimizer.
         """
+        if not os.path.isabs(run_dir):
+            run_dir = os.path.join(os.getcwd(), run_dir)
         self.run_dir = run_dir
         self.run_name = os.path.basename(run_dir)
         self.summary = {}
         self._counter = 0
-        os.makedirs(run_dir, exist_ok=True)
         print(f'run directory {"created" if not os.path.exists(run_dir) else "already exists"}')
+        os.makedirs(run_dir, exist_ok=True)
         os.chdir(self.run_dir)
         self._initialize_logging()
         self._initialize_components()
@@ -240,4 +243,9 @@ class EDBOGenerator:
         """
         Visualize the prediction results of the run.
         """
-        pass
+        options = {
+            'scatter':scatter
+            }
+
+        options[plot_type](self)
+    
