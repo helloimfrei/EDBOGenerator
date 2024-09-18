@@ -10,5 +10,6 @@ These methods allow the user to perform optimizations with minimal effort, curre
 Planned features include a Shiny-based UI to enable user-friendly data input (my goal is to fully negate the need to open a csv when using this framework)
 
 ## Installation:
-1. Get EDBO running locally using the instructions highlighted in the EDBOPlus repo.
-2.  Coming soon! 
+1. Get EDBO running locally using the instructions highlighted in the EDBOPlus repo linked above.
+2. Install edbogenerator with pip (pip install edbogenerator) or from this repo directly (same process as EDBO+)
+3. Check out the examples folder for a demo!

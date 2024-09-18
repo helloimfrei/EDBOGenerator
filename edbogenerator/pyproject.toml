@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "edbogenerator"
+version = "0.1.0"
+description = "A host of useful tools to augment the EDBO+ optimization workflow."
+authors = ["helloimfrei <christianjtapp@gmail.com>"]
+license = "Apache 2.0"
+# readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8.16"
+pandas = "1.3.4"
+plotly = "^5.24.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
