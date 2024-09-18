@@ -11,15 +11,15 @@ Planned features include a Shiny-based UI to enable user-friendly data input (my
 ## Installation:
 1. Get EDBO running locally using the instructions highlighted in the EDBOPlus repo linked above.
 2. Install edbogenerator with pip or by cloning this repo:
-   '''
+'''
    pip install edbogenerator
-   '''
+'''
    or
-   '''
+'''
    git clone https://github.com/helloimfrei/EDBOGenerator.git
    cd EDBOGenerator
    pip install .
-   '''
+'''
 4. Check out the examples folder for a demo workflow!
 
 
