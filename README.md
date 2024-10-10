@@ -6,7 +6,7 @@ This framework seeks to augment the existing EDBO+ workflow by handling the gene
 Instantiating the class provides an object representing an entire optimization run for a given reaction scope, with a set of methods to enable optimization/simulation/visualization workflows with built-in file handling.
 These methods allow the user to perform optimizations with minimal effort, currently supporting: round-by-round prediction (standard EDBO+ usage), bulk training input (beginning the optimization run with existing experimental data), simulation of an optimization using existing experimental data, optimization summary generation (coming soon!), and interactive visualization (coming soon!).
 
-Planned features include a Shiny-based UI to enable user-friendly data input (my goal is to fully negate the need to open a csv when using this framework)
+Planned features also include some form of Jupyter-integrated UI to enable simpler data input (my goal is to fully negate the need to open a csv when using this framework, with all data entry completed in the same notebook).
 
 ## Installation:
 1. Get EDBO running locally using the instructions highlighted in the EDBOPlus repo linked above.
