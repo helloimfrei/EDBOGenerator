@@ -1,5 +1,5 @@
 # EDBOGenerator
-An in-progress framework of useful functionality for implementing Bayesian optimization for reaction optimization, built on EDBO+ from the Doyle lab.
+A framework of useful functionality for implementing Bayesian optimization for reaction optimization, built on EDBO+ from the Doyle lab.
 https://github.com/doyle-lab-ucla/edboplus
 
 This framework seeks to augment the existing EDBO+ workflow by handling the generation of a run directory and all required files for optimization runs. 
